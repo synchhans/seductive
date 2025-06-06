@@ -1,103 +1,191 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Image from "next/image";
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+export default function HomePage() {
+  const [images, setImages] = useState([]);
+  const [form, setForm] = useState({ title: "", url: "" });
+  const [editingId, setEditingId] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    fetch("/api/images")
+      .then((res) => res.json())
+      .then((data) => setImages(data));
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (editingId) {
+      await fetch(`/api/images/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      setImages(
+        images.map((img) => (img._id === editingId ? { ...img, ...form } : img))
+      );
+    } else {
+      const res = await fetch("/api/images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      setImages([...images, { ...form, _id: data.insertedId }]);
+    }
+
+    setForm({ title: "", url: "" });
+    setEditingId(null);
+    setModalOpen(false);
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm("Yakin ingin menghapus gambar ini?")) return;
+    await fetch(`/api/images/${id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    });
+    setImages(images.filter((img) => img._id !== id));
+  };
+
+  const openEditModal = (img) => {
+    setForm({ title: img.title, url: img.url });
+    setEditingId(img._id);
+    setModalOpen(true);
+  };
+
+  const openAddModal = () => {
+    setForm({ title: "", url: "" });
+    setEditingId(null);
+    setModalOpen(true);
+  };
+
+  return (
+    <main className="p-6 max-w-6xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6">📸 Galeri Gambar</h1>
+
+      <button
+        onClick={openAddModal}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+      >
+        + Tambah Gambar
+      </button>
+
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4">
+              {editingId ? "Edit Gambar" : "Tambah Gambar"}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium">Judul</label>
+                <input
+                  type="text"
+                  className="w-full border px-3 py-2 rounded"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">URL Gambar</label>
+                <input
+                  type="url"
+                  className="w-full border px-3 py-2 rounded"
+                  value={form.url}
+                  onChange={(e) => setForm({ ...form, url: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="flex justify-between mt-4">
+                <button
+                  type="button"
+                  className="text-gray-600"
+                  onClick={() => setModalOpen(false)}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                >
+                  Simpan
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      )}
+
+      {previewUrl && (
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+          onClick={() => setPreviewUrl(null)} // Tutup saat klik di luar gambar
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <div
+            className="relative bg-white rounded-lg shadow-lg"
+            onClick={(e) => e.stopPropagation()} // Mencegah modal tertutup saat klik isi
+          >
+            <button
+              onClick={() => setPreviewUrl(null)}
+              className="absolute top-2 right-2 text-black bg-white border rounded-full px-2 py-1"
+            >
+              ✕
+            </button>
+            <Image
+              src={previewUrl}
+              alt="Preview"
+              width={800}
+              height={800}
+              className="object-contain max-w-[90vw] max-h-[80vh] rounded-lg cursor-pointer"
+              onClick={() => setPreviewUrl(null)} // Tutup juga saat gambar diklik
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-8">
+        {images.map((img) => (
+          <div
+            key={img._id}
+            className="rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition transform hover:scale-105"
+          >
+            <div
+              onClick={() => setPreviewUrl(img.url)}
+              className="cursor-pointer"
+            >
+              <Image
+                src={img.url}
+                alt={img.title}
+                width={400} // Ukuran gambar disesuaikan
+                height={300} // Ukuran gambar disesuaikan
+                className="object-contain bg-gray-100 rounded w-full h-48 transform transition-all duration-300 hover:scale-110"
+              />
+            </div>
+            <div className="p-4">
+              <p className="font-medium truncate">{img.title}</p>
+              <div className="flex justify-between mt-3">
+                <button
+                  onClick={() => openEditModal(img)}
+                  className="text-blue-600 hover:underline text-sm"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(img._id)}
+                  className="text-red-600 hover:underline text-sm"
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </main>
   );
 }
