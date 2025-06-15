@@ -4,7 +4,7 @@ import clientPromise from "../../../../../lib/mongodb.js";
 
 export async function PUT(req, { params }) {
   try {
-    const { id } = params; // Mengambil id dari params
+    const id = await params;
     const { title, url } = await req.json(); // Mendapatkan data title dan url dari body
 
     // Koneksi ke database MongoDB
@@ -37,7 +37,7 @@ export async function PUT(req, { params }) {
 // DELETE request untuk menghapus image berdasarkan ID
 export async function DELETE(req, { params }) {
   try {
-    const { id } = params; // Mengambil id dari params
+    const id = await params; // Mengambil id dari params
 
     // Koneksi ke database MongoDB
     const client = await clientPromise;
